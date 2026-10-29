@@ -1,160 +1,110 @@
-# NbSe2 12×12 input-generation pipeline
+# NbSe2 12×12 pipeline
 
-Generate the 144 rigid in-plane registry shifts, relax atomic z coordinates, run
-SCF → NSCF → Wannier90, and export the inputs used by ERTCA. This is optional:
-`Fig1.jl`–`Fig10.jl` already use the supplied data and do not launch DFT jobs.
+`pipeline.py` generates the grid and runs relaxation → SCF → NSCF → Wannier90.
+The calculation settings and generated QE/Wannier inputs are unchanged from the
+supplied cluster pipeline. The Python helpers and job runners are consolidated
+into this one file; Slurm scripts are generated inside `grid12/`.
 
-## Requirements and settings
+## Files
 
-Python 3.8+ (standard library only), Bash, Slurm, MPI, Quantum ESPRESSO 7.3.1
-(`pw.x`, `pw2wannier90.x`) and Wannier90 3.1.0. Julia with ERTCA's project
-is needed only to pack the final HDF5 archive. Cluster software is not installed
-by these scripts.
+- `pipeline.py`: settings, input generation, submission, execution and validation.
+- `Nb.upf`, `Se.upf`: the exact pseudopotentials used in the calculations.
+- `pack_grid.jl`: optional export of completed Hamiltonians to ERTCA's HDF5 format.
+- `README.md` and `.gitignore`: instructions and generated-file exclusions.
 
-Edit the Slurm account/resources in `settings.py` and module commands in
-`cluster_env.sh` for your cluster **before generating the grid**. Defaults retain
-the supplied Nibi configuration: 20 MPI tasks, 4 GB per task, 24 hours, and at
-most 20 concurrent array tasks. The account `rrg-vcrepel` must be replaced if
-you do not have access to it. Both array submission files and per-shift job
-scripts are generated automatically; they are not stored in this repository.
+## Run
 
-The calculation settings are retained from the supplied cluster pipeline:
+Requires Python 3.8+ (standard library only), Bash, Slurm, MPI, Quantum ESPRESSO
+7.3.1 and Wannier90 3.1.0. Review the account, resources and module settings at the
+top of `pipeline.py` for your cluster **before** generating a fresh grid. Defaults
+retain the Nibi setup: account `rrg-vcrepel`, 20 MPI tasks, 4 GB per task, 24 hours
+and up to 20 concurrent jobs. Use an account you have access to.
 
-| Parameter | Value |
-| --- | --- |
-| Grid | (i/12, j/12), i,j = 0,…,11 |
-| Structure | six-atom bilayer, fixed cell and x/y, z relaxation only |
-| Functional / SOC / dispersion | PBE / enabled / Grimme D3 |
-| Wavefunction / density cutoffs | 80 / 800 Ry, all stages |
-| Ionic energy / force thresholds | 1e-5 Ry / 1e-4 Ry/Bohr |
-| Electronic threshold, relax / SCF / NSCF | 1e-10 / 1e-8 / 1e-8 Ry |
-| k meshes, relax / SCF / NSCF | 20×20×1 / 25×25×1 / 20×20×1 |
-| Smearing | Gaussian, 0.02 Ry |
-| Electrons / SCF and NSCF spinor bands | 90 / 108 |
-| Wannier subspace | bands 89–92, four spinor Wannier functions |
-| Projection gauge | supplied vacuum-site s projections, num_iter=0 |
-
-Keep the supplied pseudopotentials for reproduction. The numerical setup,
-including the three-decimal projection x/y coordinates, is unchanged. These
-settings reproduce the supplied inputs; they are not a new convergence study.
-
-## Run on the cluster
-
-Use a fresh checkout with no `grid12/`. From `Inputs/NbSe2_pipeline`:
+From this folder on the cluster, first test one stacking:
 
 ```bash
-python3 test_pipeline.py
-python3 generate_grid_12x12.py
-(cd grid12/shift_i00_j00 && sbatch batch_relax.sh)
+python3 pipeline.py generate
+python3 pipeline.py submit-relax --only 0 0
 ```
 
-Wait for the AA relaxation to finish, then test its Wannier chain:
+Wait for the relaxation job to finish, then:
 
 ```bash
-python3 check_relaxations.py --stacking grid12/shift_i00_j00
-python3 generate_wannier_12x12.py --only 0 0
-(cd grid12/shift_i00_j00 && sbatch batch_wannier.sh)
+python3 pipeline.py check-relax --only 0 0
+python3 pipeline.py submit-wannier --only 0 0
 ```
 
-After that job finishes:
+Wait for its SCF/NSCF/Wannier job to finish, then:
 
 ```bash
-python3 check_wannier.py --stacking grid12/shift_i00_j00
-bash submit_all.sh
+python3 pipeline.py check-wannier --only 0 0
+python3 pipeline.py submit-relax
 ```
 
-Wait for all relaxation jobs to finish successfully, then:
+Wait for all relaxation jobs to finish, then:
 
 ```bash
-python3 check_relaxations.py
-bash submit_wannier.sh
+python3 pipeline.py check-relax
+python3 pipeline.py submit-wannier
 ```
 
 After all Wannier jobs finish:
 
 ```bash
-python3 check_wannier.py
-python3 extract_nb_interlayer_distance.py grid12 --output NbSe2_interlayer_distance_regenerated.dat
+python3 pipeline.py check-wannier
 ```
 
-Completed, validated AA jobs are skipped when the full arrays run. Submit array
-scripts from the pipeline folder and individual jobs from their shift folder;
-the commands above use the required working directories. Python generators only
-write files; `sbatch` and the `submit_*.sh` wrappers submit jobs.
+`generate` does not submit jobs. `submit-wannier` validates the selected relaxations
+and prepares their SCF/NSCF/Wannier inputs before submitting. Use
+`python3 pipeline.py prepare` to prepare inputs without submission. Completed,
+validated jobs are skipped. Existing outputs are not silently overwritten.
 
-## Export the ERTCA archive
+Generated inputs, scratch files, job scripts and calculation outputs are inside
+`grid12/`; array scheduler logs are written in the pipeline folder. Keep the
+original `.wout`, `_hr.dat`, `_wsvec.dat` and `.win` files.
+The runner stops on failure. Inspect and archive failed outputs before retrying;
+remove a stale `.pipeline_lock` only after confirming its job has ended.
+Settings changes require a fresh pipeline copy. QE scratch data is retained unless
+`CLEANUP_QE=1` is exported before submission; cleanup runs only after validation.
+Completion records compare compressed copies of exact input bytes.
 
-Retain the original `NbSe2.wout`, `NbSe2_hr.dat`, `NbSe2_wsvec.dat`, and `NbSe2.win`
-from every stacking. Once all 144 chains pass, on a machine with Julia and the
-ERTCA checkout, run from this folder:
+## Calculation settings
+
+Fixed six-atom cell; z-only relaxation; 12×12 registry grid; PBE with SOC and
+Grimme D3; cutoffs 80/800 Ry; ionic thresholds 1e-5 Ry and 1e-4 Ry/Bohr; electronic
+thresholds 1e-10 Ry (relax) and 1e-8 Ry (SCF/NSCF); Gaussian smearing 0.02 Ry;
+k meshes 20×20×1 / 25×25×1 / 20×20×1; 108 spinor bands; Wannier bands 89–92;
+four Wannier functions with the original projections and `num_iter=0`.
+
+## Optional figure-input export
+
+After all 144 jobs pass, from this folder:
 
 ```bash
+python3 pipeline.py distances --output NbSe2_interlayer_distance_regenerated.dat
 julia --project=../.. -e 'using Pkg; Pkg.instantiate()'
 julia --project=../.. --startup-file=no pack_grid.jl grid12 NbSe2_grid_12x12_regenerated.h5
 ```
 
-The packer requires all 144 stackings and checks exact reconstruction of each
-six-decimal Hamiltonian file before saving a new archive. It refuses to overwrite
-an existing archive. It stores the lattice, Wannier centres/spreads, and hopping
-matrices needed by the figure loader, not full calculation logs or atomic Site
-tables. Extract layer distances from the original `.wout` logs first.
+The packer preserves the printed Hamiltonians exactly and refuses to overwrite an
+existing archive. It stores lattice vectors, Wannier centres/spreads and hoppings;
+retain original logs for atomic positions and full calculation details. Compare
+regenerated outputs with the existing inputs in `../` before replacing them.
+Running the figures does not require rerunning this DFT workflow.
 
-Compare the regenerated files with `../NbSe2_grid_12x12_tight.h5` and
-`../NbSe2_interlayer_distance.dat` before deliberately replacing any figure input.
-The output filenames above leave the supplied figure inputs untouched.
+## Pseudopotentials
 
-## Validation and retries
+The included files are unchanged copies of PseudoDojo's fully relativistic PBE
+norm-conserving ONCVPSP v0.4 data:
+[Nb-sp_r.upf](https://github.com/PseudoDojo/ONCVPSP-PBE-FR-PDv0.4/blob/master/Nb/Nb-sp_r.upf)
+(13 valence electrons) and
+[Se-d_r.upf](https://github.com/PseudoDojo/ONCVPSP-PBE-FR-PDv0.4/blob/master/Se/Se-d_r.upf)
+(16 valence electrons), renamed `Nb.upf` and `Se.upf`. Together these give 90
+valence electrons per bilayer cell. Keep these files for reproduction; substitutes
+may change the results and band numbering.
 
-The checker requires normal QE termination, BFGS convergence, final coordinates,
-and the **total** atomic z forces within tolerance. The Wannier runner stops after
-failed stages and retains scratch files by default. `CLEANUP_QE=1` enables scratch
-cleanup only after a complete, validated chain.
-
-`wannier.complete` stores compressed copies of the exact inputs and pseudopotentials;
-subsequent checks compare the current bytes directly. Old completion markers from
-the cluster version are incompatible. This folder is intended for fresh runs;
-never copy its scripts over an active calculation directory.
-
-For a retry, first inspect the failure and confirm the job has ended. Archive
-failed output files before resubmitting; the runners refuse to overwrite them.
-A killed job can leave `.pipeline_lock`; remove that empty directory only after
-confirming no job is using the stacking. Changed numerical settings require a
-fresh pipeline copy. Keep successful `relax.out` and the generated `.in`/`.win`
-files when retrying only the Wannier stages.
-
-Local checks cover grid generation, rejection of incomplete/high-force relaxations,
-separation of total and D3 contribution forces, failure propagation, and changed
-inputs/pseudopotentials. The supplied test fixture was updated to include the
-force-table header required by the supplied parser. No physical settings changed.
-
-The five generated AA input files match the supplied cluster inputs byte for byte.
-The supplied AA logs report QE 7.3.1, 90 electrons, 108 bands, 80/800 Ry cutoffs,
-normal completion, and max |Fz| = 6.009e-5 Ry/Bohr. Their Wannier centres/spreads
-match the AA entry in ERTCA's supplied archive. The full layer-distance table
-matches the existing input file. These checks do not rerun the DFT grid or establish
-fresh convergence for all 144 stackings. Sample logs are retained in the uploaded
-review ZIP, not duplicated in this minimal folder.
-
-## Pseudopotentials and attribution
-
-`Nb.upf` and `Se.upf` are the exact supplied files. They match the following
-[PseudoDojo PBE fully relativistic v0.4](https://github.com/PseudoDojo/ONCVPSP-PBE-FR-PDv0.4)
-files byte for byte:
-
-| Local file | Original file | Valence electrons |
-| --- | --- | --- |
-| Nb.upf | [Nb/Nb-sp_r.upf](https://github.com/PseudoDojo/ONCVPSP-PBE-FR-PDv0.4/blob/master/Nb/Nb-sp_r.upf) | 13 |
-| Se.upf | [Se/Se-d_r.upf](https://github.com/PseudoDojo/ONCVPSP-PBE-FR-PDv0.4/blob/master/Se/Se-d_r.upf) | 16 |
-
-They are fully relativistic, norm-conserving ONCVPSP 3.3.0 pseudopotentials with
-PBE exchange-correlation and spin-orbit data. The bilayer has 2×13 + 4×16 = 90
-valence electrons. Substituting other pseudopotentials may change the electron
-count, band numbering and results.
-
-Credit the PseudoDojo project and D. R. Hamann,
+Credit PseudoDojo and D. R. Hamann,
 [Phys. Rev. B 88, 085117 (2013)](https://doi.org/10.1103/PhysRevB.88.085117).
-PseudoDojo distributes its pseudopotential files under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), as stated in its
-[license notice](https://github.com/PseudoDojo/pseudodojo#license).
-These third-party data files retain their original notices and are not relicensed
-under ERTCA's MIT license. The filenames were shortened; their contents are unchanged.
+These data retain their notices and PseudoDojo's
+[CC BY 4.0 terms](https://github.com/PseudoDojo/pseudodojo#license), separate from
+ERTCA's MIT license.

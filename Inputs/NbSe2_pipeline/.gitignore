@@ -1,8 +1,6 @@
 /grid12/
 /__pycache__/
-/submit_relax_array.sh
-/submit_wannier_array.sh
-/*.out
-/*.err
 /*_regenerated.dat
 /*_regenerated.h5
+/*.out
+/*.err
