@@ -5,7 +5,6 @@ module NbSe2SpectralFunction
 
 ENV["GKSwstype"] = "100"
 include(joinpath(@__DIR__, "src", "common.jl"))
-using SHA
 using Serialization, DelimitedFiles
 import Plots
 
@@ -365,7 +364,6 @@ function main()
     end
     open(joinpath(FIGURE_DIR,STEM*"_parameters.txt"),"w") do io
         println(io,"Input: ",NBSE2.archive)
-        println(io,"Input SHA256: ",bytes2hex(sha256(read(NBSE2.archive))))
         println(io,"Reference: untwisted angle-independent average_bilayer(h) = W(k,G=0); both layers and spins, including uniform interlayer coupling.")
         println(io,"Reference sampling: centered monolayer first BZ, nk = ",NK_REFERENCE,"; half filling = 2 of 4 states.")
         @printf(io,"Reference EF = %.10f eV; slice E-EF = %.6f meV\n",ef,1000eslice)

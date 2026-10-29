@@ -25,6 +25,8 @@ Outputs are `Figures/Fig1.pdf` through `Figures/Fig10.pdf`, with matching PNG pr
 
 Figures 1 and 2 also require `pdflatex` with `standalone` and `pgfplots`, and Poppler's `pdftoppm`. Figure 4 requires `pdfcrop` (and Ghostscript) and `pdftoppm`. On macOS, MacTeX supplies the TeX tools and `brew install poppler` supplies Poppler; ensure the commands are on PATH. The scripts also recognize the standard MacTeX location `/Library/TeX/texbin`.
 
+Direct package versions are pinned in `Project.toml`. Setup generates an ignored local `Manifest.toml`; Julia manages its own package integrity checks. Calculation caches compare the input and source bytes directly.
+
 ## Figure numbering
 
 The supplied PDF has **eight main figures and two supplementary figures**, S1 and S2. To provide the requested consecutive filenames, the latter are named `Fig9.jl` and `Fig10.jl` here.
@@ -58,13 +60,13 @@ Licensed under the MIT license; see `LICENSE`.
 
 ## Source layout
 
-`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. Unused model APIs, archive writers, diagnostics, and plot variants have been removed. Input checksums are recorded in `Inputs/SHA256SUMS`.
+`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. Unused model APIs, archive writers, diagnostics, and plot variants have been removed.
 
 ## Validation
 
 Checked on October 29, 2026 with Julia 1.12.6. All ten scripts completed after cleanup. Figures 1, 2, 9 and 10 ran at full settings; expensive checks used temporary copies with 12-point band paths (Figures 3/8), eight initial tracking steps with adaptive refinement (Figure 4), or 3-by-3 moire and 30-by-30 reference meshes (Figures 5–7). The committed scripts retain all original paper settings.
 
-Full NbSe2 and WSe2 Hamiltonians at three momenta each were entry-for-entry identical before and after cleanup. Figure 4 reproduced its previous PDF drawing content, as did Figures 1, 2, 9 and 10 and the same-mesh checks for Figures 5–7. Input checksums and module exports were verified.
+Full NbSe2 and WSe2 Hamiltonians at three momenta each were entry-for-entry identical before and after cleanup. Figure 4 reproduced its previous PDF drawing content, as did Figures 1, 2, 9 and 10 and the same-mesh checks for Figures 5–7. Module exports were verified.
 
 ## Push updates
 

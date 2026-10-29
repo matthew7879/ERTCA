@@ -2,3 +2,4 @@
 Figures/
 .DS_Store
 *.jl.cov
+Manifest*.toml

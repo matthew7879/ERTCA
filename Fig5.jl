@@ -5,7 +5,6 @@ ENV["GKSwstype"] = "100"
 include(joinpath(@__DIR__, "src", "common.jl"))
 using Printf
 using Serialization
-using SHA
 import Plots
 
 # -------------------------- Settings to change ---------------------------------
@@ -60,8 +59,9 @@ function input_signature()
     for (directory, _, names) in walkdir(joinpath(root, "src"))
         append!(files, [joinpath(directory,n) for n in names if endswith(n,".jl")])
     end
-    hashes = [bytes2hex(sha256(read(file))) for file in sort(files)]
-    return (version=1, julia=string(VERSION), hashes=hashes,
+    # Compare exact input and source bytes.
+    contents = [(relpath(file, root), read(file)) for file in sort(files)]
+    return (version=2, julia=string(VERSION), contents=contents,
             shells=REGISTRY_SHELLS, atol=HARMONIC_ATOL)
 end
 
@@ -372,8 +372,7 @@ function main_nbse2_dos()
     end
 
     # 2. Keep only W(k,G=0). This single four-band reference has no twist angle.
-    analysis_hash = bytes2hex(sha256(read(joinpath(@__DIR__,"src","common.jl"))))
-    reference_key = (signature,NK_REFERENCE,analysis_hash,:first_bz_v1)
+    reference_key = (signature,NK_REFERENCE,:first_bz_v2)
     reference_levels = cached_calculation("G0_firstBZ_nk$(NK_REFERENCE)",reference_key) do
         println("Sampling the G=0 reference in the first Brillouin zone")
         sample_reference_spectrum(h,NK_REFERENCE)
@@ -432,7 +431,6 @@ function main_nbse2_dos()
     mkpath(FIGURE_DIR)
     open(joinpath(FIGURE_DIR,STEM*"_parameters.txt"),"w") do io
         println(io,"Input: ",NBSE2.archive)
-        println(io,"Input SHA256: ",bytes2hex(sha256(read(NBSE2.archive))))
         println(io,"Normalization: 4 states and half filling = 2 electrons per primitive bilayer area.")
         println(io,"Displayed DOS units: eV^-1 A_c^-1, where A_c is the primitive in-plane unit-cell area; numerical values equal DOS per primitive cell.")
         println(io,"Registry shells: ",REGISTRY_SHELLS,"; coefficient pruning: ",HARMONIC_ATOL," eV; no hopping-radius cutoff.")

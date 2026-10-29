@@ -7,7 +7,6 @@ ENV["GKSwstype"] = "100"
 include(joinpath(@__DIR__, "src", "common.jl"))
 using Printf
 using Serialization
-using SHA
 import Plots
 
 # -------------------------- Settings to change ---------------------------------
@@ -50,8 +49,9 @@ function input_signature()
     for (directory, _, names) in walkdir(joinpath(root, "src"))
         append!(files, [joinpath(directory, n) for n in names if endswith(n, ".jl")])
     end
-    hashes = [bytes2hex(sha256(read(file))) for file in sort(files)]
-    return (version=1, julia=string(VERSION), hashes=hashes,
+    # Compare exact input and source bytes.
+    contents = [(relpath(file, root), read(file)) for file in sort(files)]
+    return (version=2, julia=string(VERSION), contents=contents,
             shells=REGISTRY_SHELLS, atol=HARMONIC_ATOL)
 end
 
@@ -170,8 +170,7 @@ function load_dft_dos(path=DFT_FILE)
     length(energy_meV) >= 2 || error("$path: expected at least two DOS samples")
     all(>(0), diff(energy_meV)) || error("$path: energies must be strictly increasing")
     integral = sum(diff(energy_meV) .* (density[1:end-1] .+ density[2:end]) ./ 2) / 1000
-    return (; path, energy_meV, dos=density, headers, integral,
-            sha256=bytes2hex(sha256(read(path))))
+    return (; path, energy_meV, dos=density, headers, integral)
 end
 
 # Same reference features as the original middle panel, now vertical guides.
@@ -299,8 +298,7 @@ function main_nbse2_dos_9p43()
         @printf("Loaded %d registries (%d relaxed-centre drift warnings).\n", length(scan.d), warnings)
         registry_harmonics(scan; gshells=REGISTRY_SHELLS, atol=HARMONIC_ATOL)
     end
-    analysis_hash = bytes2hex(sha256(read(joinpath(@__DIR__, "src", "common.jl"))))
-    reference_key = (signature, NK_REFERENCE, analysis_hash, :first_bz_v1)
+    reference_key = (signature, NK_REFERENCE, :first_bz_v2)
     reference_levels = cached_calculation("G0_firstBZ_nk$(NK_REFERENCE)", reference_key) do
         println("Sampling the G=0 reference in the first Brillouin zone")
         sample_reference_spectrum(h, NK_REFERENCE)
@@ -345,8 +343,6 @@ function main_nbse2_dos_9p43()
     figure = plot_dos(energy_grid, reference_dos, moire_dos, guides, dft)
     open(joinpath(FIGURE_DIR, STEM * "_parameters.txt"), "w") do io
         println(io, "Input: ", NBSE2.archive)
-        println(io, "Input SHA256: ", bytes2hex(sha256(read(NBSE2.archive))))
-        println(io, "Script SHA256: ", bytes2hex(sha256(read(@__FILE__))))
         println(io, "Model: full commensurate ERTCA, both layers and spins, default folded/wrapped channels.")
         println(io, "Normalization: 4 states per primitive in-plane area A_c; moire DOS divided by N.")
         println(io, "x axis: E in meV relative to shared G=0 reference E_F; y axis: DOS in eV^-1 A_c^-1.")
@@ -355,7 +351,6 @@ function main_nbse2_dos_9p43()
         println(io, "Registry shells: ", REGISTRY_SHELLS, "; coefficient pruning: ", HARMONIC_ATOL, " eV; no hopping-radius cutoff.")
         println(io, "Gaussian standard deviation: ", SIGMA_EV, " eV; energy step: ", ENERGY_STEP_EV, " eV.")
         println(io, "DFT input: ", dft.path)
-        println(io, "DFT input SHA256: ", dft.sha256)
         println(io, "DFT columns: E-E_F in meV; DOS already in states/eV/primitive bilayer cell.")
         println(io, "DFT DOS used as supplied: no rescaling, no additional broadening, no four-state normalization.")
         println(io, "DFT broadening: 15 meV Gaussian as reported in input header; model standard deviation remains ", 1000SIGMA_EV, " meV.")
