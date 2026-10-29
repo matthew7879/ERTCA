@@ -47,7 +47,7 @@ const DOS_PEAK_WINDOWS_MEV = ((-210.0,-130.0), (-120.0,-40.0))
 # Match each angle by color in the DOS and delta-DOS panels; all curves are solid.
 const COLORS = ["#244F87", "#D62728", "#228833", "#7C4D91", "#C56C20"]
 const FIGURE_DIR = normpath(joinpath(@__DIR__, "Figures"))
-const CACHE_DIR = normpath(joinpath(@__DIR__, ".cache", "NbSe2_DOS_twist_angles"))
+const CACHE_DIR = normpath(joinpath(@__DIR__, ".cache", "ERTCA", "NbSe2_DOS_twist_angles"))
 const USE_CACHE = true          # saved eigenvalues make later styling changes quick
 const STEM = "Fig5"
 
@@ -88,7 +88,7 @@ function sample_spectrum(model, nk; slab=false)
     nbands = n_states(model.cell)
     energies = Matrix{Float64}(undef, nbands, nk^2)
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(nk^2) do chunk
+    ERTCA.threaded_chunks(nk^2) do chunk
         H = zeros(ComplexF64, nbands, nbands)
         for index in chunk
             i, j = mod(index-1,nk), div(index-1,nk)
@@ -143,7 +143,7 @@ function sample_reference_spectrum(h, nk)
     binv = inv(transpose(h.lattice.b))
     energies = Matrix{Float64}(undef,length(h.labels),nk^2)
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(nk^2) do chunk
+    ERTCA.threaded_chunks(nk^2) do chunk
         for index in chunk
             i, j = mod(index-1,nk), div(index-1,nk)
             kbox = SVector((i+0.5)/nk,(j+0.5)/nk)

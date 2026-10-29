@@ -63,15 +63,15 @@ selected = [SVector(0, 0),
 
 # Only the half of ±G is stored (using Hermiticity)
 harmonics = map(selected) do G
-    iG, sgn = SingleParticleModels._harmonic_match(h, G)
+    iG, sgn = ERTCA._harmonic_match(h, G)
     (G=G, iG=iG, sgn=sgn)
 end
 function tunneling_value(h, harmonic, k)
     β, βp = SPIN_CHANNEL.β, SPIN_CHANNEL.βp
     if harmonic.sgn == 1
-        return SingleParticleModels._harmonic_value(h, harmonic.iG, β, βp, k)
+        return ERTCA._harmonic_value(h, harmonic.iG, β, βp, k)
     end
-    return conj(SingleParticleModels._harmonic_value(h, harmonic.iG, βp, β, k))
+    return conj(ERTCA._harmonic_value(h, harmonic.iG, βp, β, k))
 end
 magnitudes = [1000abs(tunneling_value(h, harmonic, k))
               for k in path.kpts, harmonic in harmonics]
@@ -79,11 +79,11 @@ magnitudes = [1000abs(tunneling_value(h, harmonic, k))
 # Reconstruct the same matrix element with ALL fitted shells, not just the
 # first-shell coefficients displayed in (a). Precompute their complex values
 # at fixed K′; only the registry Fourier phase changes along this path.
-registry_shell_ids = SingleParticleModels._shell_ids(h)
+registry_shell_ids = ERTCA._shell_ids(h)
 registry_terms = map(eachindex(h.gvecs)) do iG
     (G=h.gvecs[iG], shell=registry_shell_ids[iG],
-     forward=SingleParticleModels._harmonic_value(h, iG, SPIN_CHANNEL.β, SPIN_CHANNEL.βp, KPRIME),
-     backward=conj(SingleParticleModels._harmonic_value(h, iG, SPIN_CHANNEL.βp, SPIN_CHANNEL.β, KPRIME)))
+     forward=ERTCA._harmonic_value(h, iG, SPIN_CHANNEL.β, SPIN_CHANNEL.βp, KPRIME),
+     backward=conj(ERTCA._harmonic_value(h, iG, SPIN_CHANNEL.βp, SPIN_CHANNEL.β, KPRIME)))
 end
 function fitted_registry_tunneling(d; shells=4)
     value = 0.0 + 0.0im
@@ -151,7 +151,7 @@ registry_nodes = [("MM", 0.0), ("XM", 1/3), ("MX", 2/3), ("MM", 1.0)]
 # Check the optimized scalar sum against the package's full matrix reconstruction.
 for (label, t) in registry_nodes
     d = SVector(1-t, t)
-    reference = SingleParticleModels._reconstruct_W(h, d, KPRIME)[SPIN_CHANNEL.β, SPIN_CHANNEL.βp]
+    reference = ERTCA._reconstruct_W(h, d, KPRIME)[SPIN_CHANNEL.β, SPIN_CHANNEL.βp]
     @assert isapprox(fitted_registry_tunneling(d), reference; atol=1e-11, rtol=1e-10)
     @printf("Panel (b), %s: d=(%.6f,%.6f), |W(K′,d)|=%.6f meV\n",
             label, d..., 1000abs(reference))

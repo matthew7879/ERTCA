@@ -1,5 +1,5 @@
 """Numerical routines retained for Figures 1–10 of the ERTCA paper."""
-module SingleParticleModels
+module ERTCA
 using LinearAlgebra, SparseArrays, StaticArrays
 using KrylovKit: eigsolve, Block, BlockLanczos
 export AMPLITUDE_ATOL, AUTO_SITE_PREFIX, AbstractBondSelector, AbstractBondWeight, AbstractEnvelope, AbstractHamiltonianTerm
@@ -42,6 +42,6 @@ include("numerics.jl")
 include("geometry.jl")
 include("hamiltonian.jl")
 include("wannier.jl")
-include("ertca.jl")
+include("construction.jl")
 include("spectra.jl")
 end

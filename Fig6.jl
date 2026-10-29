@@ -38,7 +38,7 @@ const REFERENCE_LABEL = raw"Stacking-averaged bilayer ($\bar{G}_0$)"
 const FIGURE_DIR = normpath(joinpath(@__DIR__, "Figures"))
 const STEM = "Fig6"
 # Reuse compatible spectra from the original three-panel script.
-const CACHE_DIR = normpath(joinpath(@__DIR__, ".cache", "NbSe2_DOS_twist_angles"))
+const CACHE_DIR = normpath(joinpath(@__DIR__, ".cache", "ERTCA", "NbSe2_DOS_twist_angles"))
 const USE_CACHE = true
 
 # Same spectral calculation/cache identity as NbSe2_DOS_twist_angles.jl.
@@ -77,7 +77,7 @@ function sample_spectrum(model, nk)
     nbands = n_states(model.cell)
     energies = Matrix{Float64}(undef, nbands, nk^2)
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(nk^2) do chunk
+    ERTCA.threaded_chunks(nk^2) do chunk
         H = zeros(ComplexF64, nbands, nbands)
         for index in chunk
             i, j = mod(index - 1, nk), div(index - 1, nk)
@@ -105,7 +105,7 @@ function sample_reference_spectrum(h, nk)
     binv = inv(transpose(h.lattice.b))
     energies = Matrix{Float64}(undef, length(h.labels), nk^2)
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(nk^2) do chunk
+    ERTCA.threaded_chunks(nk^2) do chunk
         for index in chunk
             i, j = mod(index - 1, nk), div(index - 1, nk)
             kbox = SVector((i + 0.5) / nk, (j + 0.5) / nk)

@@ -44,7 +44,7 @@ function sample_reference_spectrum(h,nk)
     binv = inv(transpose(h.lattice.b))
     levels = Matrix{Float64}(undef,length(h.labels),nk^2)
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(nk^2) do chunk
+    ERTCA.threaded_chunks(nk^2) do chunk
         for index in chunk
             i,j = mod(index-1,nk),div(index-1,nk)
             k = binv*fold_to_bz(h.lattice,SVector((i+0.5)/nk,(j+0.5)/nk))
@@ -126,7 +126,7 @@ function reference_maps(h,groups,energies)
     W0 = average_bilayer(h)
     rows = Vector{Matrix{Float64}}(undef,length(groups))
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(length(groups)) do chunk
+    ERTCA.threaded_chunks(length(groups)) do chunk
         for index in chunk
             points = groups[index].points
             values = Matrix{Float64}(undef,length(points),length(energies))
@@ -155,7 +155,7 @@ function twisted_maps(model,groups,energies)
     orthogonality = zeros(length(groups))
     hermiticity = zeros(length(groups))
     finished = Threads.Atomic{Int}(0)
-    SingleParticleModels.threaded_chunks(length(groups)) do chunk
+    ERTCA.threaded_chunks(length(groups)) do chunk
         H = zeros(ComplexF64,ns,ns)
         for index in chunk
             group = groups[index]

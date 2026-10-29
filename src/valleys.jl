@@ -23,7 +23,7 @@ function gamma_kp_models(ctx)
     h = V.h
     P = valley_parameters(h, V.kbar, ctx.lat)
     @assert all(<(0), P.hess) "The Gamma effective mass must describe a band maximum."
-    shells = SingleParticleModels._shell_ids(h)
+    shells = ERTCA._shell_ids(h)
     keep = findall(s -> s <= HARMONIC_SHELLS, shells)
 
     function build(; momentum_dependent_g0::Bool)

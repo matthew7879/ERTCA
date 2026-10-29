@@ -98,7 +98,7 @@ function ensure_deck!(seedname::AbstractString, archive::AbstractString,
     return unpack_deck(archive, destdir)
 end
 
-using SingleParticleModels
+using ERTCA
 
 using LinearAlgebra
 
@@ -225,13 +225,13 @@ function ertca_scan(mat::ERTCAMaterial; stride::Int=1, skip=(),
                          match=match, atol=mat.match_atol, name=name)
 end
 
-using SingleParticleModels
+using ERTCA
 
 using LinearAlgebra
 
 using StaticArrays
 
-import SingleParticleModels: _harmonic_value, _rotation2, threaded_chunks, HarmonicBlock
+import ERTCA: _harmonic_value, _rotation2, threaded_chunks, HarmonicBlock
 
 function average_bilayer(h::RegistryHarmonics)
     iG0 = findfirst(iszero, h.gvecs)
@@ -454,7 +454,7 @@ function ertca_context(mat::ERTCAMaterial; mn::Tuple{Int,Int}=MN, gshells::Int=G
     EF = isnothing(mat.filling) ? nothing : fermi_level(h; filling=mat.filling)
     lat = h.lattice
     bT = transpose(lat.b)
-    Lmat = SingleParticleModels._ertca_L(tb.theta / 2)
+    Lmat = ERTCA._ertca_L(tb.theta / 2)
     moire = BravaisLattice(Matrix(lat.a * transpose(inv(Lmat))))
     if verbose
         @printf("""
@@ -479,8 +479,8 @@ function valley_setup(ctx, which::Symbol)
     hal, info = spin_align(ctx.h, SVector(1 / 3, 1 / 3))
     h1 = select_orbitals(hal, [2, 4])
     th = ctx.theta
-    Kb = SingleParticleModels._rotation2(-th / 2) * kc
-    Kt = SingleParticleModels._rotation2(+th / 2) * kc
+    Kb = ERTCA._rotation2(-th / 2) * kc
+    Kt = ERTCA._rotation2(+th / 2) * kc
     if which === :K
         kap_b = SVector(2 / 3, 2 / 3)
         expansion = Kb - ctx.bmT * kap_b
@@ -509,11 +509,11 @@ function valley_parameters(h1::RegistryHarmonics, kbar, lat::BravaisLattice{2})
     end
     ev = eigvals(Symmetric(Hs))
     mstar = -2HBAR2_2M / (sum(ev) / 2)
-    star1 = SingleParticleModels.g_star(lat, 1)
-    C3 = SingleParticleModels._integer_c3(lat)
-    reps = SingleParticleModels._c3_closed_reps(star1, C3)
+    star1 = ERTCA.g_star(lat, 1)
+    C3 = ERTCA._integer_c3(lat)
+    reps = ERTCA._c3_closed_reps(star1, C3)
     function amp(i, j, g)
-        hit = SingleParticleModels._harmonic_match(h1, g)
+        hit = ERTCA._harmonic_match(h1, g)
         isnothing(hit) && return nothing
         iG, sg = hit
         sg > 0 ? Wv(iG, i, j, kbar) : conj(Wv(iG, j, i, kbar))
