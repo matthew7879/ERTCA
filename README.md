@@ -1,0 +1,75 @@
+# ERTCA
+
+Minimal figure-reproduction code for **Moire metals and continuum models beyond a single valley**, Matthew Albert, Andrew Klekovkin-Hardy, and Valentin Crepel (manuscript dated October 29, 2026).
+
+This repository contains ten Julia entrypoints, their input data, and the numerical subset of SingleParticleModels they use. It is self-contained: it does not need another SingleParticleModels checkout. The Julia module retains the name `SingleParticleModels` for compatibility with the original calculations; the repository is ERTCA.
+
+## Setup and run
+
+Use Julia 1.11 or newer (validated with Julia 1.12.6). From this directory:
+
+```sh
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+julia --project=. --startup-file=no -t auto Fig1.jl
+```
+
+Replace `Fig1.jl` with any script in the table below. Each runs independently from the supplied inputs, including `Fig4.jl`; no previously generated figures or serialized calculations are required. To run all ten in separate Julia processes:
+
+```sh
+for n in {1..10}; do
+  julia --project=. --startup-file=no -t auto "Fig${n}.jl" || break
+done
+```
+
+Outputs are `Figures/Fig1.pdf` through `Figures/Fig10.pdf`, with matching PNG previews. Some scripts also write numerical data and parameter reports. `Figures/` and `.cache/` are generated locally and ignored by Git. Full band, DOS, and spectral calculations can take appreciably longer than the simple supplementary plots. The numerical meshes and physical parameters match the source scripts; they are not reduced for speed.
+
+Figures 1 and 2 also require `pdflatex` with `standalone` and `pgfplots`, and Poppler's `pdftoppm`. Figure 4 requires `pdfcrop` (and Ghostscript) and `pdftoppm`. On macOS, MacTeX supplies the TeX tools and `brew install poppler` supplies Poppler; ensure the commands are on PATH. The scripts also recognize the standard MacTeX location `/Library/TeX/texbin`.
+
+## Figure numbering
+
+The supplied PDF has **eight main figures and two supplementary figures**, S1 and S2. To provide the requested consecutive filenames, the latter are named `Fig9.jl` and `Fig10.jl` here.
+
+| Script | Figure in the PDF | Content | Original plotting script |
+| --- | --- | --- | --- |
+| `Fig1.jl` | 1 | NbSe2 orbital, monolayer Fermi surface, and stacking-dependent DFT/Wannier bands | `Fig1.jl` + `Fig1_spin.jl` |
+| `Fig2.jl` | 2 | NbSe2 interlayer harmonics and shell convergence | `2Interlayer_tunnelings.jl` |
+| `Fig3.jl` | 3 | WSe2 moire bands versus DFT and the published continuum model | WSe2 panel of `Fig3.jl` |
+| `Fig4.jl` | 4 | WSe2 highest and Gamma-derived states unfolded into the monolayer BZ | two-panel selection of `WSe2_unfolded_three_bands.jl` |
+| `Fig5.jl` | 5 | NbSe2 bands and DOS at 5.09, 6.01, and 7.93 degrees | `NbSe2_DOS_twist_angles.jl` |
+| `Fig6.jl` | 6 | NbSe2 DOS benchmark at 9.43 degrees | `NbSe2_DOS_9p43.jl` |
+| `Fig7.jl` | 7 | NbSe2 spectral weight at the upper van Hove singularity | `Spectral_function.jl` |
+| `Fig8.jl` | 8 | NbSe2 Gamma-valley band comparison | NbSe2 panel of `Fig3.jl` |
+| `Fig9.jl` | S1 | Nb-Nb separation versus registry | original `Fig4.jl` |
+| `Fig10.jl` | S2 | NbSe2 harmonic decay at Gamma and K-prime | combined plot in `harmonic_decay.jl` |
+
+The original numerical algorithms, input values, plotting parameters, and energy references are retained. Packaging changes relocate paths, split the original combined entrypoints, calculate Figure 4's input on demand, and remove unrelated figures and optional comparison plots. Figure 1's orbital illustration is an input VESTA export, not generated from scratch by Julia.
+
+## Inputs and provenance
+
+- `Inputs/NbSe2_grid_12x12_tight.h5` and `Inputs/WSe2_grid_12x12.h5`: the two 144-registry Wannier datasets. They expand on demand into `.cache/`; no unpacked 106 MB data tree is committed.
+- `Inputs/NbSe2_monolayer*`: Wannier Hamiltonian, centers, checkpoint, spin matrix, and k-point input used by Figure 1.
+- `Inputs/NbSe2_bands_DFT_*.dat`: the five stacking-resolved band references used by Figure 1.
+- `Inputs/NbSe2_Wannier.pdf`: the VESTA orbital illustration used by Figure 1.
+- `Inputs/NbSe2_9p43deg_DFT_DOS_gauss15meV.dat`: large-cell DOS reference for Figure 6.
+- `Inputs/NbSe2_interlayer_distance.dat`: the 144 atomic Nb-Nb separations for Figure 9/S1.
+- `Inputs/WSe2_DFT_reference/`: the k-path and band data from T. Devakul, V. Crepel, Y. Zhang and L. Fu, *Magic in twisted transition metal dichalcogenide bilayers*, Nature Communications 12, 6730 (2021), [arXiv:2106.11954](https://arxiv.org/abs/2106.11954). The CSVs retain the original vacuum-referenced energies and reversed, deduplicated Gamma–K–M–Gamma path. The calculation has 762 atoms, NELECT=6604, and spinor bands; the plotted bands are selected as Kramers pairs.
+
+Copied from the local `paper-branch` checkout of `CrepelGroup/SingleParticleModels`, based at commit `9abb458aad6608841039375a819ca18e5fd6cfc4`. The paper scripts and inputs were untracked local files at extraction time, so that commit alone does not identify them. `Inputs/SHA256SUMS` records the exact input bytes included here. The source repository and its Git history are not modified or copied into this repository.
+
+The upstream MIT license is retained in `LICENSE`. This is a paper-specific numerical subset, not a replacement for the full SingleParticleModels package.
+
+## Publish to GitHub
+
+From this repository, after installing and signing in to the GitHub CLI:
+
+```sh
+gh auth login
+gh repo create matthew7879/ERTCA --public --source=. --remote=origin --push
+```
+
+Use `--private` instead of `--public` if desired. If the repository already exists on GitHub and is empty, use:
+
+```sh
+git remote add origin https://github.com/matthew7879/ERTCA.git
+git push -u origin main
+```
