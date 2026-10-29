@@ -58,6 +58,10 @@ Copied from the local `paper-branch` checkout of `CrepelGroup/SingleParticleMode
 
 The upstream MIT license is retained in `LICENSE`. This is a paper-specific numerical subset, not a replacement for the full SingleParticleModels package.
 
+## Validation
+
+Checked on October 29, 2026 with Julia 1.12.6. All ten entrypoints completed successfully. Figures 1, 2, 3, 4, 8, 9 and 10 ran with their full production settings; their PDF page drawing streams exactly matched the corresponding original figure PDFs. Figure 4 regenerated its eigenstates from the raw inputs. Figures 5, 6 and 7 were smoke-tested in a separate temporary copy with 3-by-3 moire meshes and 30-by-30 reference meshes; their full-resolution calculations were not rerun during packaging. The committed scripts retain the original 22-by-22 and 300-by-300 meshes. All input checksums, Julia syntax, dependency installation, and loading from this independent repository were checked.
+
 ## Publish to GitHub
 
 From this repository, after installing and signing in to the GitHub CLI:
