@@ -46,7 +46,7 @@ The original numerical algorithms, input values, plotting parameters, and energy
 
 ## Inputs
 
-To regenerate the NbSe2 registry data with Quantum ESPRESSO and Wannier90, see [Inputs/NbSe2_pipeline](Inputs/NbSe2_pipeline/README.md). It includes the original pseudopotentials, scientific input generation, output checks, and HDF5 export. This optional workflow is separate from running the figures.
+To regenerate the registry data with Quantum ESPRESSO and Wannier90, see [Inputs/NbSe2_DFT_Wannier](Inputs/NbSe2_DFT_Wannier/README.md) and [Inputs/WSe2_DFT_Wannier](Inputs/WSe2_DFT_Wannier/README.md). Each includes the original pseudopotentials, scientific input generation, output checks, and HDF5 export. These optional workflows are separate from running the figures.
 
 - `Inputs/NbSe2_grid_12x12_tight.h5` and `Inputs/WSe2_grid_12x12.h5`: the two 144-registry Wannier datasets. They expand on demand into `.cache/`; no unpacked 106 MB data tree is committed.
 - `Inputs/NbSe2_monolayer*`: Wannier Hamiltonian, centers, checkpoint, spin matrix, and k-point input used by Figure 1.
