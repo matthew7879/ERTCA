@@ -2,8 +2,7 @@
 # Run from this repository: julia --project=. -t auto Fig5.jl
 
 ENV["GKSwstype"] = "100"
-include(joinpath(@__DIR__, "src", "loader.jl"))
-include(joinpath(@__DIR__, "src", "analysis.jl")) # average_bilayer(h) = W(k, G=0)
+include(joinpath(@__DIR__, "src", "common.jl"))
 using Printf
 using Serialization
 using SHA
@@ -57,8 +56,7 @@ const STEM = "Fig5"
 # Increment the version if you change the spectral calculation in THIS file.
 function input_signature()
     root = @__DIR__
-    files = [NBSE2.archive, joinpath(@__DIR__, "src", "loader.jl"),
-             joinpath(@__DIR__, "src", "deck.jl")]
+    files = [NBSE2.archive]
     for (directory, _, names) in walkdir(joinpath(root, "src"))
         append!(files, [joinpath(directory,n) for n in names if endswith(n,".jl")])
     end
@@ -374,7 +372,7 @@ function main_nbse2_dos()
     end
 
     # 2. Keep only W(k,G=0). This single four-band reference has no twist angle.
-    analysis_hash = bytes2hex(sha256(read(joinpath(@__DIR__,"src","analysis.jl"))))
+    analysis_hash = bytes2hex(sha256(read(joinpath(@__DIR__,"src","common.jl"))))
     reference_key = (signature,NK_REFERENCE,analysis_hash,:first_bz_v1)
     reference_levels = cached_calculation("G0_firstBZ_nk$(NK_REFERENCE)",reference_key) do
         println("Sampling the G=0 reference in the first Brillouin zone")

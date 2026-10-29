@@ -2,7 +2,7 @@
 
 julia_version = "1.12.6"
 manifest_format = "2.0"
-project_hash = "d767956b1f933a20c9b202526ef295d956d5b6bf"
+project_hash = "4822377a38a2cb60870eda85a704effc0744af04"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -894,7 +894,7 @@ uuid = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 version = "1.1.1"
 
 [[deps.SingleParticleModels]]
-deps = ["Contour", "Dates", "FFTW", "HDF5", "KrylovKit", "LinearAlgebra", "NaturalNeighbours", "Plots", "SparseArrays", "StaticArrays"]
+deps = ["Contour", "FFTW", "HDF5", "KrylovKit", "LinearAlgebra", "NaturalNeighbours", "Plots", "SparseArrays", "StaticArrays"]
 path = "."
 uuid = "d6a8f395-6990-4db3-8c1d-0ddb22f0f65a"
 version = "0.4.0"

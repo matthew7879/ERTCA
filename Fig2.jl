@@ -1,7 +1,7 @@
 # NbSe2 interlayer tunneling and shell convergence.
 # Run from this repository: julia --project=. -t auto Fig2.jl
 
-include(joinpath(@__DIR__, "src", "setup.jl"))
+include(joinpath(@__DIR__, "src", "common.jl"))
 
 # The harmonic fit retains at least GSHELLS=4; this selects only what is displayed.
 # 1 → G0–G6; 2 → G0–G12; 3 → G0–G18. The fourth shell has twelve vectors.

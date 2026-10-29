@@ -29,22 +29,22 @@ Figures 1 and 2 also require `pdflatex` with `standalone` and `pgfplots`, and Po
 
 The supplied PDF has **eight main figures and two supplementary figures**, S1 and S2. To provide the requested consecutive filenames, the latter are named `Fig9.jl` and `Fig10.jl` here.
 
-| Script | Figure in the PDF | Content | Original plotting script |
-| --- | --- | --- | --- |
-| `Fig1.jl` | 1 | NbSe2 orbital, monolayer Fermi surface, and stacking-dependent DFT/Wannier bands | `Fig1.jl` + `Fig1_spin.jl` |
-| `Fig2.jl` | 2 | NbSe2 interlayer harmonics and shell convergence | `2Interlayer_tunnelings.jl` |
-| `Fig3.jl` | 3 | WSe2 moire bands versus DFT and the published continuum model | WSe2 panel of `Fig3.jl` |
-| `Fig4.jl` | 4 | WSe2 highest and Gamma-derived states unfolded into the monolayer BZ | two-panel selection of `WSe2_unfolded_three_bands.jl` |
-| `Fig5.jl` | 5 | NbSe2 bands and DOS at 5.09, 6.01, and 7.93 degrees | `NbSe2_DOS_twist_angles.jl` |
-| `Fig6.jl` | 6 | NbSe2 DOS benchmark at 9.43 degrees | `NbSe2_DOS_9p43.jl` |
-| `Fig7.jl` | 7 | NbSe2 spectral weight at the upper van Hove singularity | `Spectral_function.jl` |
-| `Fig8.jl` | 8 | NbSe2 Gamma-valley band comparison | NbSe2 panel of `Fig3.jl` |
-| `Fig9.jl` | S1 | Nb-Nb separation versus registry | original `Fig4.jl` |
-| `Fig10.jl` | S2 | NbSe2 harmonic decay at Gamma and K-prime | combined plot in `harmonic_decay.jl` |
+| Script | Figure in the PDF | Content |
+| --- | --- | --- |
+| `Fig1.jl` | 1 | NbSe2 orbital, monolayer Fermi surface, and stacking-dependent DFT/Wannier bands |
+| `Fig2.jl` | 2 | NbSe2 interlayer harmonics and shell convergence |
+| `Fig3.jl` | 3 | WSe2 moire bands versus DFT and the published continuum model |
+| `Fig4.jl` | 4 | WSe2 highest and Gamma-derived states unfolded into the monolayer BZ |
+| `Fig5.jl` | 5 | NbSe2 bands and DOS at 5.09, 6.01, and 7.93 degrees |
+| `Fig6.jl` | 6 | NbSe2 DOS benchmark at 9.43 degrees |
+| `Fig7.jl` | 7 | NbSe2 spectral weight at the upper van Hove singularity |
+| `Fig8.jl` | 8 | NbSe2 Gamma-valley band comparison |
+| `Fig9.jl` | S1 | Nb-Nb separation versus registry |
+| `Fig10.jl` | S2 | NbSe2 harmonic decay at Gamma and K-prime |
 
 The original numerical algorithms, input values, plotting parameters, and energy references are retained. Packaging changes relocate paths, split the original combined entrypoints, calculate Figure 4's input on demand, and remove unrelated figures and optional comparison plots. Figure 1's orbital illustration is an input VESTA export, not generated from scratch by Julia.
 
-## Inputs and provenance
+## Inputs
 
 - `Inputs/NbSe2_grid_12x12_tight.h5` and `Inputs/WSe2_grid_12x12.h5`: the two 144-registry Wannier datasets. They expand on demand into `.cache/`; no unpacked 106 MB data tree is committed.
 - `Inputs/NbSe2_monolayer*`: Wannier Hamiltonian, centers, checkpoint, spin matrix, and k-point input used by Figure 1.
@@ -52,28 +52,22 @@ The original numerical algorithms, input values, plotting parameters, and energy
 - `Inputs/NbSe2_Wannier.pdf`: the VESTA orbital illustration used by Figure 1.
 - `Inputs/NbSe2_9p43deg_DFT_DOS_gauss15meV.dat`: large-cell DOS reference for Figure 6.
 - `Inputs/NbSe2_interlayer_distance.dat`: the 144 atomic Nb-Nb separations for Figure 9/S1.
-- `Inputs/WSe2_DFT_reference/`: the k-path and band data from T. Devakul, V. Crepel, Y. Zhang and L. Fu, *Magic in twisted transition metal dichalcogenide bilayers*, Nature Communications 12, 6730 (2021), [arXiv:2106.11954](https://arxiv.org/abs/2106.11954). The CSVs retain the original vacuum-referenced energies and reversed, deduplicated Gamma–K–M–Gamma path. The calculation has 762 atoms, NELECT=6604, and spinor bands; the plotted bands are selected as Kramers pairs.
+- `Inputs/WSe2_DFT_reference/`: the k-path and band data from T. Devakul, V. Crepel, Y. Zhang and L. Fu, *Magic in twisted transition metal dichalcogenide bilayers*, Nature Communications 12, 6730 (2021), [arXiv:2106.11954](https://arxiv.org/abs/2106.11954). The CSVs contain only the seven plotted Kramers pairs (bands 6591–6604), retaining the original vacuum-referenced energies and reversed, deduplicated Gamma–K–M–Gamma path. The calculation has 762 atoms, NELECT=6604, and spinor bands; the plotted bands are selected as Kramers pairs.
 
-Copied from the local `paper-branch` checkout of `CrepelGroup/SingleParticleModels`, based at commit `9abb458aad6608841039375a819ca18e5fd6cfc4`. The paper scripts and inputs were untracked local files at extraction time, so that commit alone does not identify them. `Inputs/SHA256SUMS` records the exact input bytes included here. The source repository and its Git history are not modified or copied into this repository.
+Licensed under the MIT license; see `LICENSE`.
 
-The upstream MIT license is retained in `LICENSE`. This is a paper-specific numerical subset, not a replacement for the full SingleParticleModels package.
+## Source layout
+
+`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. Unused model APIs, archive writers, diagnostics, and plot variants have been removed. Input checksums are recorded in `Inputs/SHA256SUMS`.
 
 ## Validation
 
-Checked on October 29, 2026 with Julia 1.12.6. All ten entrypoints completed successfully. Figures 1, 2, 3, 4, 8, 9 and 10 ran with their full production settings; their PDF page drawing streams exactly matched the corresponding original figure PDFs. Figure 4 regenerated its eigenstates from the raw inputs. Figures 5, 6 and 7 were smoke-tested in a separate temporary copy with 3-by-3 moire meshes and 30-by-30 reference meshes; their full-resolution calculations were not rerun during packaging. The committed scripts retain the original 22-by-22 and 300-by-300 meshes. All input checksums, Julia syntax, dependency installation, and loading from this independent repository were checked.
+Checked on October 29, 2026 with Julia 1.12.6. All ten scripts completed after cleanup. Figures 1, 2, 9 and 10 ran at full settings; expensive checks used temporary copies with 12-point band paths (Figures 3/8), eight initial tracking steps with adaptive refinement (Figure 4), or 3-by-3 moire and 30-by-30 reference meshes (Figures 5–7). The committed scripts retain all original paper settings.
 
-## Publish to GitHub
+Full NbSe2 and WSe2 Hamiltonians at three momenta each were entry-for-entry identical before and after cleanup. Figure 4 reproduced its previous PDF drawing content, as did Figures 1, 2, 9 and 10 and the same-mesh checks for Figures 5–7. Input checksums and module exports were verified.
 
-From this repository, after installing and signing in to the GitHub CLI:
-
-```sh
-gh auth login
-gh repo create matthew7879/ERTCA --public --source=. --remote=origin --push
-```
-
-Use `--private` instead of `--public` if desired. If the repository already exists on GitHub and is empty, use:
+## Push updates
 
 ```sh
-git remote add origin https://github.com/matthew7879/ERTCA.git
-git push -u origin main
+git push origin main
 ```

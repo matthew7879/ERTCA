@@ -4,7 +4,7 @@
 module NbSe2SpectralFunction
 
 ENV["GKSwstype"] = "100"
-include(joinpath(@__DIR__, "src", "setup.jl")) # includes loader and analysis once
+include(joinpath(@__DIR__, "src", "common.jl"))
 using SHA
 using Serialization, DelimitedFiles
 import Plots

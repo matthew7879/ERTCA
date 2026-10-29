@@ -1,7 +1,7 @@
 # NbSe2 Wannier orbital, monolayer Fermi surface, and stacking bands.
 # Run from this repository: julia --project=. -t auto Fig1.jl
 
-include(joinpath(@__DIR__, "src", "setup.jl"))
+include(joinpath(@__DIR__, "src", "common.jl"))
 import Contour
 
 const FIG = PAPER_FIGURES

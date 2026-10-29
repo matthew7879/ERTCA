@@ -1,26 +1,22 @@
-# NbSe2 Gamma-valley comparison, publication figure with its moiré Brillouin-zone path.
-# Blue dashed: parabolic k.p, four harmonic shells, couplings frozen at Gamma.
-# Red solid: full-BZ ERTCA, four harmonic shells, both spins, folding=:auto.
-# Black dashed: the same k.p model, but ONLY interlayer G0 has its full k dependence.
-# All six first-shell interlayer transfers and all higher transfers are included.
-# Both k.p models retain one selected sector and a four-shell plane-wave basis.
-#
-# Run from the repository root:
-#   julia --project=paper/Code -t auto paper/Code/plotting_code/3_gamma_valley_reduction.jl
-# Or from paper/Code/plotting_code:
-#   julia --project=.. -t auto 3_gamma_valley_reduction.jl
+# Shared WSe2 and NbSe2 valley calculations and figure layouts.
 
 ENV["GKSwstype"] = "100"
+
 const CODE_DIR = @__DIR__
-include(joinpath(CODE_DIR, "setup.jl"))
+
+include(joinpath(@__DIR__, "common.jl"))
+
 import Plots
 
 const HARMONIC_SHELLS = 4
+
 const PLANE_WAVE_SHELLS = 4
+
 const NBANDS = 10
+
 const NPOINTS = 200
+
 const EWIN = (-250.0, 15.0)
-const STEM = "3_gamma_valley_reduction"
 
 function gamma_kp_models(ctx)
     V = valley_setup(ctx, :Gamma)
@@ -71,7 +67,6 @@ function spectrum_on_path(model, ks)
     return hcat(bz_map((k, r) -> copy(r.values), model, ks; vectors=false)...)
 end
 
-# Use the same fractional nodes and reciprocal basis as the band calculation.
 function gamma_bz_panel(ctx; nodes=gamma_nodes(), show_angle=true, show_bz_title=true,
         label_size=7, marker_size=1.5, arrow_size=(0.16, 0.08),
         labels=[raw"$\gamma$", raw"$m$", raw"$\kappa$", raw"$\kappa^{\prime}$"])
@@ -164,16 +159,14 @@ function gamma_comparison_figure(ctx, path, Efull, Econstant, Eg0; include_bz=tr
         size=(390, 220), dpi=600)
 end
 
-
-
-
 using Serialization
+
 const WSE2_NB = 7
+
 const WSE2_REF = normpath(joinpath(@__DIR__, "..", "Inputs", "WSe2_DFT_reference"))
+
 const FIG3_FRAME_LINEWIDTH = (0.55 * 72 / 72.27) / (6.74 / 7)
 
-# GR fixes native axis strokes at 1 pt. Keep its tick labels, then draw the
-# frame and inward ticks with plot! to match the interlayer figure's 0.55 TeX pt.
 function fig3_box!(panel)
     xmin, xmax = Plots.xlims(panel)
     ymin, ymax = Plots.ylims(panel)
@@ -220,8 +213,6 @@ function read_wse2_reference()
         r = split(l, ",")
         tbl[(parse(Int, r[1]), parse(Int, r[2]))] = parse(Float64, r[3])
     end
-    ### NELECT = 6604 with one electron per band, and the calculation is a spinor one, so the
-    ### bands come in Kramers pairs: one moiré band per PAIR, counted down from the top.
     bandidx = [6604 - 2 * (n - 1) for n in 1:WSE2_NB]
     E = [tbl[(ik, b)] * 1000 for b in bandidx, ik in eachindex(ks)]      # upper of each pair
     Elo = [tbl[(ik, b - 1)] * 1000 for b in bandidx, ik in eachindex(ks)] # lower of each pair
@@ -360,7 +351,6 @@ function wse2_band_panel(data)
     return p1
 end
 
-# Normalize the reciprocal basis: both materials have the same hexagon shape.
 function fig3_display_basis(ctx)
     reciprocal = Matrix(ctx.bmT)
     e1 = reciprocal[:, 1]/norm(reciprocal[:, 1])
@@ -368,7 +358,6 @@ function fig3_display_basis(ctx)
     return rotation*reciprocal/norm(reciprocal*[1/3, 1/3])
 end
 
-# Keep the original hexagon, path markings, and vertical energy label.
 function fig3_path_panel(ctx; energy_label_x=0.0)
     fig_font = 7  # Combined with thickness_scaling=6.74/7, matches 10pt REVTeX.
     B = fig3_display_basis(ctx)
@@ -404,9 +393,6 @@ function fig3_path_panel(ctx; energy_label_x=0.0)
     return q
 end
 
-
-# The WSe2 figure keeps the hexagon and E (meV) label on the left.
-# The band-panel width and font sizes match the original combined figure.
 function fig3_single_figure(panel, ctx; energy_ticks, trim_left=false, top_legend=false)
     Plots.plot!(panel; title="", legend=false, ylabel="",
         fontfamily="Computer Modern", tickfontsize=7, guidefontsize=7,
@@ -507,7 +493,6 @@ function fig3_nbse2_legend!(figure)
     return figure
 end
 
-
 function save_fig3(fig; outdir=PAPER_FIGURES, stem="Fig3")
     mkpath(outdir)
     for ext in ("png", "pdf")
@@ -516,4 +501,3 @@ function save_fig3(fig; outdir=PAPER_FIGURES, stem="Fig3")
         println("figure → ", dest)
     end
 end
-

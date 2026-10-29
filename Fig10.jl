@@ -2,7 +2,7 @@
 # Run from this repository: julia --project=. -t auto Fig10.jl
 
 ENV["GKSwstype"] = "100"
-include(joinpath(@__DIR__, "src", "loader.jl"))
+include(joinpath(@__DIR__, "src", "common.jl"))
 using Printf
 using FFTW: ifft
 import Plots
@@ -13,9 +13,7 @@ const KPRIME = SVector(0,0)#(2 / 3, -1 / 3)
 const HOPPING_RADIUS = Inf  # No cutoff: use all imported hoppings. Set e.g. 15.0 for 15 Å.
 # Full 3D Wannier-centre distance |R + τ_j - τ_i|, including layer separation.
 # Applied before the k-space sum; both plots and their reference dots use this cutoff.
-const LOG_Y = true  # applies to the harmonic-decay figure only
 const MAX_SHELLS = :all  # :all uses all 144 coefficients; set e.g. 6 for a shorter comparison
-const PATH_POINTS = 601
 const OUTDIR = normpath(joinpath(@__DIR__, "Figures"))
 
 function truncate_hoppings(model, radius)
@@ -50,23 +48,6 @@ function shortest_g_representatives(B, n)
     return gs
 end
 
-#= DIRECT SUM — preserved for comparison; uncomment this block to use it.
-# The requested equation, applied to COMPLEX W. Wgrid[i+1,j+1] is W at (i/12,j/12).
-function direct_harmonics(Wgrid, gs)
-    n = size(Wgrid, 1)
-    @assert size(Wgrid) == (n, n)
-    coefficients = zeros(ComplexF64, length(gs))
-    for (index, g) in enumerate(gs)
-        for i in 0:n-1, j in 0:n-1
-            phase = cispi(2*(g[1]*i + g[2]*j)/n) # exp(+i G⋅d_ij)
-            coefficients[index] += phase * Wgrid[i+1,j+1]
-        end
-        coefficients[index] /= n^2
-    end
-    return coefficients
-end
-
-=#
 
 # Inverse sum at any fractional registry d=(d1,d2). There is NO 1/144 here.
 # Pass only the G vectors and coefficients that belong to the desired shell cutoff.
