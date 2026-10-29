@@ -58,7 +58,7 @@ Licensed under the MIT license; see `LICENSE`.
 
 ## Source layout
 
-`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. Unused model APIs, archive writers, diagnostics, and plot variants have been removed.
+`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. 
 
 ## Validation
 
