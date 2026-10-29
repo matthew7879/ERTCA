@@ -2,8 +2,6 @@
 
 Minimal figure-reproduction code for **Moire metals and continuum models beyond a single valley**, Matthew Albert, Andrew Klekovkin-Hardy, and Valentin Crepel (manuscript dated October 29, 2026).
 
-This repository contains ten Julia entrypoints, their input data, and the numerical subset of SingleParticleModels they use. It is self-contained: it does not need another SingleParticleModels checkout. The Julia module retains the name `SingleParticleModels` for compatibility with the original calculations; the repository is ERTCA.
-
 ## Setup and run
 
 Use Julia 1.11 or newer (validated with Julia 1.12.6). From this directory:
@@ -60,7 +58,7 @@ Licensed under the MIT license; see `LICENSE`.
 
 ## Source layout
 
-`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. Unused model APIs, archive writers, diagnostics, and plot variants have been removed.
+`src/` contains nine files: the module entrypoint, numerical utilities, geometry, Hamiltonian construction, Wannier input readers, ERTCA construction, band-path sampling, shared figure setup, and valley comparisons. 
 
 ## Validation
 
