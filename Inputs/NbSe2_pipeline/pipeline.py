@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""NbSe2 12×12 relaxation, SCF/NSCF and Wannier pipeline (Python standard library)."""
+"""Generate and validate NbSe2 12×12 relaxation, SCF/NSCF and Wannier inputs."""
 
 import argparse
-from contextlib import contextmanager
 import json
 import math
 from math import sqrt
-import os
 from pathlib import Path
 import re
-import shlex
-import shutil
-import subprocess
-from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 
 # Edit settings before `generate`; scientific defaults match the supplied run.
 class Settings:
@@ -50,21 +44,12 @@ class Settings:
         ('Se', 0.3333333330, 0.6666666670,  0.2511811403),
     ]
 
-    # Cluster settings: edit for your account before generating a fresh grid.
-    ACCOUNT = 'rrg-vcrepel'
-    NTASKS = 20
-    MEM_PER_CPU = '4G'
-    WALLTIME = '24:00:00'
-    MAX_CONCURRENT = 20
-    MODULES = ['StdEnv/2023', 'intel/2023.2.1', 'openmpi/4.1.5', 'quantumespresso/7.3.1']
-    WANNIER_MODULE = 'wannier90/3.1.0'
 
 s = Settings
 ROOT = Path(__file__).resolve().parent
 GRID = ROOT / 'grid12'
 NUMBER = r'[-+]?(?:\d+\.?\d*|\.\d+)(?:[EeDd][-+]?\d+)?'
-COMPLETION_INPUTS = ('relax.out', 'scf.in', 'nscf.in', 'pw2wan.in',
-                     'NbSe2.win', 'Nb.upf', 'Se.upf')
+
 
 PW2WAN = """&INPUTPP
  outdir = './',
@@ -279,33 +264,8 @@ def read_relax(folder):
     distance = abs(atoms[3][3] - atoms[0][3]) * s.ALAT_BOHR * s.C_OVER_A * s.BOHR_TO_ANG
     return dict(atoms=atoms, energy=number(energies[-1]), max_fz=max_fz, distance=distance)
 
-def record_completion(folder):
-    """Save exact input bytes after a successful validation, with compression."""
-    folder = Path(folder)
-    temporary = folder / 'wannier.complete.tmp'
-    try:
-        with ZipFile(temporary, 'w', compression=ZIP_DEFLATED) as saved:
-            for name in COMPLETION_INPUTS:
-                saved.write(folder / name, arcname=name)
-        temporary.replace(folder / 'wannier.complete')
-    finally:
-        if temporary.exists():
-            temporary.unlink()
 
-def check_completion(folder):
-    """Require every current input to match the saved bytes exactly."""
-    folder = Path(folder)
-    try:
-        with ZipFile(folder / 'wannier.complete') as saved:
-            if saved.namelist() != list(COMPLETION_INPUTS):
-                raise ValueError('invalid Wannier completion record')
-            for name in COMPLETION_INPUTS:
-                if saved.read(name) != (folder / name).read_bytes():
-                    raise ValueError(f'{name} changed since successful Wannier run')
-    except BadZipFile as exc:
-        raise ValueError('unreadable Wannier completion record; validate outputs before recording again') from exc
-
-def check_wannier(folder, require_marker=True):
+def check_wannier(folder):
     folder = Path(folder)
     read_relax(folder)
     qe_finished(folder / 'scf.out', scf=True)
@@ -337,8 +297,6 @@ def check_wannier(folder, require_marker=True):
     for name in ['NbSe2_wsvec.dat', 'NbSe2_band.dat']:
         if (folder / name).stat().st_size == 0:
             raise ValueError(f'{name} is empty')
-    if require_marker:
-        check_completion(folder)
 
 def write_same_or_new(path, content):
     """Allow regenerating identical inputs; never replace an existing different input."""
@@ -415,40 +373,6 @@ def extract(root, ngrid):
             len(errors), ngrid * ngrid, "\n".join(errors)))
     return reference, rows
 
-def batch(stage, i=None, j=None):
-    array = i is None
-    name = f'{stage}_12x12' if array else f'{stage}_{i:02d}_{j:02d}'
-    directives = f'#SBATCH --array=0-{s.N*s.N-1}%{s.MAX_CONCURRENT}\n' if array else ''
-    if array:
-        body = f'''root="$SLURM_SUBMIT_DIR"
-i=$(( SLURM_ARRAY_TASK_ID / {s.N} ))
-j=$(( SLURM_ARRAY_TASK_ID % {s.N} ))
-folder=$(printf "%s/grid12/shift_i%02d_j%02d" "$root" "$i" "$j")
-'''
-    else:
-        body = '''folder="$SLURM_SUBMIT_DIR"
-root=$(cd "$folder/../.." && pwd)
-'''
-    modules = s.MODULES + ([s.WANNIER_MODULE] if stage == 'wannier' else [])
-    return f'''#!/bin/bash
-#SBATCH --job-name={name}
-#SBATCH --account={s.ACCOUNT}
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node={s.NTASKS}
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu={s.MEM_PER_CPU}
-#SBATCH --time={s.WALLTIME}
-#SBATCH --output={stage}-%A_%a.out
-#SBATCH --error={stage}-%A_%a.err
-{directives}
-set -euo pipefail
-{body}
-module purge
-module load {' '.join(shlex.quote(m) for m in modules)}
-export OMP_NUM_THREADS=1
-python3 "$root/pipeline.py" run-{stage} "$folder"
-'''
-
 
 def generate():
     for name in ['Nb.upf', 'Se.upf']:
@@ -464,12 +388,8 @@ def generate():
         for name in ['Nb.upf', 'Se.upf']:
             (folder / name).symlink_to('../../' + name)
         (folder / 'relax.in').write_text(pw_input('relax', shifted_atoms(i, j)))
-        for stage in ['relax', 'wannier']:
-            (folder / f'batch_{stage}.sh').write_text(batch(stage, i, j))
-    for stage in ['relax', 'wannier']:
-        (GRID / f'submit_{stage}_array.sh').write_text(batch(stage))
     print(f'Created {len(indices())} shifts in {GRID}')
-    print('Test AA: python3 pipeline.py submit-relax --only 0 0')
+    print('Run the generated relax.in files and save each output as relax.out.')
 
 
 def prepare(only=None):
@@ -526,101 +446,12 @@ def check_grid(stage, only=None):
     return int(bool(failed))
 
 
-def submit(stage, only=None):
-    check_settings()
-    indices(only)  # validate before selecting a directory
-    if stage == 'wannier':
-        prepare(only)
-    if only is None:
-        folder = ROOT
-        script = GRID / f'submit_{stage}_array.sh'
-    else:
-        folder = GRID / shift_name(*only)
-        script = folder / f'batch_{stage}.sh'
-    # Slurm records this cwd as SLURM_SUBMIT_DIR, used by the generated script.
-    subprocess.run(['sbatch', str(script)], cwd=folder, check=True)
-
-
-@contextmanager
-def job_lock(folder):
-    lock = folder / '.pipeline_lock'
-    try:
-        lock.mkdir()
-    except FileExistsError:
-        raise ValueError(f'{folder.name}: another job is running, or a stale .pipeline_lock remains')
-    try:
-        yield
-    finally:
-        lock.rmdir()
-
-
-def execute(folder, argv, output):
-    with (folder / output).open('w') as out:
-        subprocess.run(argv, cwd=folder, stdout=out, check=True)
-
-
-def run_stage(stage, folder):
-    check_settings()
-    folder = Path(folder).resolve()
-    with job_lock(folder):
-        if stage == 'relax':
-            if (folder / 'relax.out').exists():
-                read_relax(folder)
-                print('Relaxation already complete; skipping.')
-                return
-            np = os.environ.get('SLURM_NTASKS')
-            if not np:
-                raise ValueError('Run through sbatch: SLURM_NTASKS is missing')
-            execute(folder, ['mpirun', '-np', np, 'pw.x', '-in', 'relax.in'], 'relax.out')
-            read_relax(folder)
-            return
-        read_relax(folder)
-        if (folder / 'wannier.complete').exists():
-            check_wannier(folder)
-            print('Wannier chain already complete; skipping.')
-            return
-        for name in ['scf.out', 'nscf.out', 'pw2wan.out', 'NbSe2.wout', 'NbSe2.werr', 'NbSe2_hr.dat']:
-            if (folder / name).exists():
-                raise ValueError(f'Existing {name}: archive failed Wannier outputs before retrying')
-        for name in ['scf.in', 'nscf.in', 'pw2wan.in', 'NbSe2.win']:
-            if not (folder / name).is_file() or not (folder / name).stat().st_size:
-                raise ValueError(f'Missing {name}: run pipeline.py prepare first')
-        np = os.environ.get('SLURM_NTASKS')
-        if not np:
-            raise ValueError('Run through sbatch: SLURM_NTASKS is missing')
-        mpi = ['mpirun', '-np', np]
-        for qe_stage in ['scf', 'nscf']:
-            print(qe_stage.upper(), flush=True)
-            execute(folder, mpi + ['pw.x', '-in', f'{qe_stage}.in'], f'{qe_stage}.out')
-            qe_finished(folder / f'{qe_stage}.out', scf=qe_stage == 'scf')
-        print('Wannier preprocessing', flush=True)
-        execute(folder, ['wannier90.x', '-pp', 'NbSe2'], 'wannier_pp.out')
-        if not (folder / 'NbSe2.nnkp').stat().st_size or (folder / 'NbSe2.werr').exists():
-            raise ValueError('Wannier preprocessing failed')
-        print('QE to Wannier90', flush=True)
-        execute(folder, mpi + ['pw2wannier90.x', '-in', 'pw2wan.in'], 'pw2wan.out')
-        qe_finished(folder / 'pw2wan.out')
-        print('Wannier Hamiltonian', flush=True)
-        execute(folder, ['wannier90.x', 'NbSe2'], 'wannier_run.out')
-        check_wannier(folder, require_marker=False)
-        record_completion(folder)
-        if os.environ.get('CLEANUP_QE') == '1':
-            for path in folder.glob('NbSe2.wfc*'):
-                path.unlink()
-            scratch = folder / 'NbSe2.save'
-            if scratch.is_symlink():
-                scratch.unlink()
-            elif scratch.exists():
-                shutil.rmtree(scratch)
-        print('DONE')
-
-
 def distances(output):
     check_settings()
     lattice, rows = extract(GRID, s.N)
     with Path(output).open('w') as out:
         out.write('# Nb atomic layer separation from original NbSe2.wout Site tables\n')
-        out.write(f'# source_grid: {GRID.resolve()}\n# ngrid: {s.N}\n')
+        out.write(f'# ngrid: {s.N}\n')
         out.write('# d = u*a1 + v*a2; u=i/ngrid, v=j/ngrid\n')
         out.write('# distance_A = abs(z_Nb2-z_Nb1); no lateral distance or periodic wrapping\n')
         for key in ('a_1', 'a_2', 'a_3'):
@@ -636,26 +467,19 @@ def distances(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
-    commands.add_parser('generate', help='create a fresh 144-shift grid and job scripts')
-    for command in ['prepare', 'submit-relax', 'submit-wannier', 'check-relax', 'check-wannier']:
+    commands.add_parser('generate', help='create relaxation inputs for a fresh 144-shift grid')
+    for command in ['prepare', 'check-relax', 'check-wannier']:
         sub = commands.add_parser(command)
         sub.add_argument('--only', type=int, nargs=2, metavar=('I', 'J'))
     sub = commands.add_parser('distances', help='export atomic Nb-Nb separations')
     sub.add_argument('--output', type=Path, default=ROOT / 'NbSe2_interlayer_distance_regenerated.dat')
-    for command in ['run-relax', 'run-wannier']:
-        sub = commands.add_parser(command, help='internal: run one job inside a Slurm allocation')
-        sub.add_argument('folder', type=Path)
     args = parser.parse_args()
     if args.command == 'generate':
         generate()
     elif args.command == 'prepare':
         prepare(args.only)
-    elif args.command.startswith('submit-'):
-        submit(args.command.split('-')[1], args.only)
     elif args.command.startswith('check-'):
         return check_grid(args.command.split('-')[1], args.only)
-    elif args.command.startswith('run-'):
-        run_stage(args.command.split('-')[1], args.folder)
     else:
         distances(args.output)
     return 0
@@ -664,5 +488,5 @@ def main():
 if __name__ == '__main__':
     try:
         raise SystemExit(main())
-    except (OSError, ValueError, StopIteration, subprocess.CalledProcessError) as exc:
+    except (OSError, ValueError, StopIteration) as exc:
         raise SystemExit(str(exc))

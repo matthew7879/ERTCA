@@ -1,5 +1,4 @@
 # Nb atomic layer separation from original NbSe2.wout Site tables
-# source_grid: /project/6108152/malbe058/dft-project/NbSe2/nbse2_pipeline_tight/grid12
 # ngrid: 12
 # d = u*a1 + v*a2; u=i/ngrid, v=j/ngrid
 # distance_A = abs(z_Nb2-z_Nb1); no lateral distance or periodic wrapping

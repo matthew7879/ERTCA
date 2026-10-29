@@ -1,72 +1,70 @@
-# NbSe2 12×12 pipeline
+# NbSe2 12×12 inputs
 
-`pipeline.py` generates the grid and runs relaxation → SCF → NSCF → Wannier90.
-The calculation settings and generated QE/Wannier inputs are unchanged from the
-supplied cluster pipeline. The Python helpers and job runners are consolidated
-into this one file; Slurm scripts are generated inside `grid12/`.
+`pipeline.py` generates input files for relaxation, SCF, NSCF and Wannier90, and
+checks the outputs after you run the calculations. The scientific settings,
+pseudopotentials and generated calculation inputs are unchanged.
 
 ## Files
 
-- `pipeline.py`: settings, input generation, submission, execution and validation.
+- `pipeline.py`: scientific settings, input generation, output checks and distance extraction.
 - `Nb.upf`, `Se.upf`: the exact pseudopotentials used in the calculations.
 - `pack_grid.jl`: optional export of completed Hamiltonians to ERTCA's HDF5 format.
 - `README.md` and `.gitignore`: instructions and generated-file exclusions.
 
-## Run
+## Generate inputs
 
-Requires Python 3.8+ (standard library only), Bash, Slurm, MPI, Quantum ESPRESSO
-7.3.1 and Wannier90 3.1.0. Review the account, resources and module settings at the
-top of `pipeline.py` for your cluster **before** generating a fresh grid. Defaults
-retain the Nibi setup: account `rrg-vcrepel`, 20 MPI tasks, 4 GB per task, 24 hours
-and up to 20 concurrent jobs. Use an account you have access to.
+Python 3.8+ with its standard library is sufficient to generate the inputs.
+Run the calculations separately using your own Quantum ESPRESSO and Wannier90
+installations. Edit the scientific settings at the top of `pipeline.py` before
+generating a fresh grid.
 
-From this folder on the cluster, first test one stacking:
+From this folder:
 
 ```bash
 python3 pipeline.py generate
-python3 pipeline.py submit-relax --only 0 0
 ```
 
-Wait for the relaxation job to finish, then:
+This creates `grid12/shift_i00_j00/` through `grid12/shift_i11_j11/`, each containing
+`relax.in` and links to the two pseudopotentials. Run each relaxation from its
+shift directory and save its output as `relax.out`.
 
-```bash
-python3 pipeline.py check-relax --only 0 0
-python3 pipeline.py submit-wannier --only 0 0
-```
-
-Wait for its SCF/NSCF/Wannier job to finish, then:
-
-```bash
-python3 pipeline.py check-wannier --only 0 0
-python3 pipeline.py submit-relax
-```
-
-Wait for all relaxation jobs to finish, then:
+After the relaxations finish:
 
 ```bash
 python3 pipeline.py check-relax
-python3 pipeline.py submit-wannier
+python3 pipeline.py prepare
 ```
 
-After all Wannier jobs finish:
+`prepare` reads the converged atomic positions from each `relax.out` and writes
+`scf.in`, `nscf.in`, `pw2wan.in` and `NbSe2.win` in that shift directory.
+For a single-stacking test, use `--only 0 0` with `check-relax` and `prepare`.
+Unfinished or unconverged relaxations are rejected; existing different inputs
+are not overwritten.
+
+## Run the generated inputs
+
+Run the following stages in order within each shift directory, waiting for each
+to finish successfully before proceeding:
+
+| Stage | Input / operation | Output to retain |
+| --- | --- | --- |
+| Relaxation | Quantum ESPRESSO `pw.x` with `relax.in` | `relax.out` |
+| SCF | `pw.x` with `scf.in` | `scf.out` and QE saved data |
+| NSCF | `pw.x` with `nscf.in` | `nscf.out` and QE saved data |
+| Wannier preprocessing | `wannier90.x -pp NbSe2` | `NbSe2.nnkp` |
+| QE-to-Wannier conversion | `pw2wannier90.x` with `pw2wan.in` | `pw2wan.out`, `.amn`, `.mmn`, `.eig` |
+| Wannier Hamiltonian | `wannier90.x NbSe2` | `NbSe2.wout`, `NbSe2_hr.dat`, `NbSe2_wsvec.dat`, `NbSe2_band.dat` |
+
+Keep the QE saved data through conversion and retain the original Wannier logs
+and Hamiltonians. The Python script does not launch calculations or delete output.
+After all calculations finish:
 
 ```bash
 python3 pipeline.py check-wannier
 ```
 
-`generate` does not submit jobs. `submit-wannier` validates the selected relaxations
-and prepares their SCF/NSCF/Wannier inputs before submitting. Use
-`python3 pipeline.py prepare` to prepare inputs without submission. Completed,
-validated jobs are skipped. Existing outputs are not silently overwritten.
-
-Generated inputs, scratch files, job scripts and calculation outputs are inside
-`grid12/`; array scheduler logs are written in the pipeline folder. Keep the
-original `.wout`, `_hr.dat`, `_wsvec.dat` and `.win` files.
-The runner stops on failure. Inspect and archive failed outputs before retrying;
-remove a stale `.pipeline_lock` only after confirming its job has ended.
-Settings changes require a fresh pipeline copy. QE scratch data is retained unless
-`CLEANUP_QE=1` is exported before submission; cleanup runs only after validation.
-Completion records compare compressed copies of exact input bytes.
+Use `--only 0 0` to check one stacking. Checks use the calculation logs and outputs;
+no completion marker is required. Settings changes require a fresh grid.
 
 ## Calculation settings
 
@@ -78,7 +76,7 @@ four Wannier functions with the original projections and `num_iter=0`.
 
 ## Optional figure-input export
 
-After all 144 jobs pass, from this folder:
+After all 144 calculations pass, from this folder:
 
 ```bash
 python3 pipeline.py distances --output NbSe2_interlayer_distance_regenerated.dat
@@ -90,7 +88,7 @@ The packer preserves the printed Hamiltonians exactly and refuses to overwrite a
 existing archive. It stores lattice vectors, Wannier centres/spreads and hoppings;
 retain original logs for atomic positions and full calculation details. Compare
 regenerated outputs with the existing inputs in `../` before replacing them.
-Running the figures does not require rerunning this DFT workflow.
+Running the figures does not require rerunning these calculations.
 
 ## Pseudopotentials
 

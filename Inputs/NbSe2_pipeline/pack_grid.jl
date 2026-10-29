@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-# Pack the 144 NbSe2 Wannier Hamiltonians after check_wannier.py succeeds.
+# Pack the 144 NbSe2 Wannier Hamiltonians after pipeline.py check-wannier succeeds.
 # The archive stores all printed hoppings, lattice vectors, centres and spreads.
 # Retain original .wout logs separately; their other contents are not archived.
 using HDF5, Printf
